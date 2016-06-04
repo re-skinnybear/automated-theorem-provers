@@ -1,0 +1,7 @@
+# Latex Files #
+###############
+*.dvi
+*.aux
+*.log
+*.pdf
+*.tex
