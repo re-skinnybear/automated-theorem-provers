@@ -2,38 +2,8 @@
 *   Theodore (Ted) Kim
 *)
 
-type term =
-    TVar of string
-  | TFunction of string * int * term list
-
-type constr = term * term
-type constraints = constr list
-
-type substitution = (string * term) list
-
-exception SOMETHINGWENTWRONG
-exception CONFLICT
-exception OCCURRENCE
-
-let rec intersperse (sep : 'a) (xs : 'a list) : 'a list =
-  match xs with
-    []        -> []
-  | (x :: []) -> x :: []
-  | (x :: xs) -> x :: sep :: intersperse sep xs
-
-let rec showTerm (t : term) : string =
-  match t with
-    TVar s -> s
-  | TFunction(f, _, xs) ->
-      f ^ "(" ^ (String.concat "" (intersperse "," (List.map showTerm xs))) ^ ")"
-
-let showTerms (y, z : term * term) : string =
-  (showTerm y) ^ " = " ^ (showTerm z)
-
-let show (xs : constraints) : string =
-  "<" ^ (String.concat "" (intersperse "," (List.map showTerms xs))) ^ ">"
-
-let printConstraints (x : constraints) : unit = (print_string (show x); print_string "\n")
+module UNIFY = struct
+open FOL
 
 let rec occurs_free (x : string) (t2 : term) : bool =
   match t2 with
@@ -135,3 +105,5 @@ let e12 = [(TFunction("f", 1, [TFunction("g", 1, [TVar "X"]); TVar "X"]),
 TFunction("f", 1, [TVar "Y"; TFunction("a", 0, [])]))]
 let e13 = [(TVar "X", TVar "Y"); (TVar "Y", TFunction("a", 0, []))]
 let e14 = [(TVar "X", TFunction("a", 0, [])); (TFunction("b", 0, []), TVar "X")]
+
+end

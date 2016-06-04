@@ -4,19 +4,27 @@
 *   Solver purposefully does not prematurely close tableau
 *)
 
-module PTS = 
-struct
+module PTS = struct
 
-type prop =  P of string | Top | Bottom | And of prop * prop | Or of prop * prop
-  | Implies of prop * prop | Not of prop
+type prop = 
+    P of string
+  | Top 
+  | Bottom 
+  | And of prop * prop 
+  | Or of prop * prop
+  | Implies of prop * prop 
+  | Not of prop
 
-type status = Open | Closed
+type status =
+    Open 
+  | Closed
 
 (* type for sequents : gamma |- delta *)
 type sequent = prop list * prop list
 
 (* type for tableau: list to be printed, list used for branching, subtableau, subtableau, status*)
-type tableau = Empty 
+type tableau = 
+    Empty 
   | Node of (bool * prop) list * (bool * prop) list * tableau * tableau * status
 
 (* exceptions *)
@@ -25,25 +33,25 @@ exception SequentError
 
 let rec disj (d : prop list) : (bool * prop) list =
   match d with
-  | [d] -> [(false, d)]
+    [d] -> [(false, d)]
   | d::ds -> (false, d)::(disj ds)
   | [] -> raise IncorrectCase
 
 let rec negdisj (d : prop list) : (bool * prop) list =
   match d with
-  | [d] -> [(false, Not(d))]
+    [d] -> [(false, Not(d))]
   | d::ds -> (false, Not(d))::(negdisj ds)
   | [] -> raise IncorrectCase
 
 let rec conj (g : prop list) : (bool * prop) list =
   match g with
-  | [g] -> [(true, g)]
+    [g] -> [(true, g)]
   | g::gs -> (true, g)::(conj gs)
   | [] -> raise IncorrectCase
 
 let rec isatomic (proplist : (bool * prop) list) : bool =
   match proplist with
-  | [] -> true
+    [] -> true
   | [(b, P c)] -> true
   | (b, P c)::rest -> true && isatomic rest
   | (b, Bottom)::rest -> true && isatomic rest
@@ -52,7 +60,7 @@ let rec isatomic (proplist : (bool * prop) list) : bool =
 
 let rec closable (proplist : (bool * prop) list) : bool =
   match proplist with
-  | [(b, P c)] -> false
+    [(b, P c)] -> false
   | (true, Bottom)::rest -> true
   | (false, Top)::rest -> true
   | (b, P c)::rest -> (List.fold_left (fun h (b', P c') -> (b <> b' && c = c') || h) 
@@ -61,7 +69,7 @@ let rec closable (proplist : (bool * prop) list) : bool =
 
 let rec applyalpha (proplist : (bool * prop) list) : bool * (bool * prop) * ((bool * prop) list) =
   match proplist with
-  | [] -> (false, (false, P "Hi"), [])
+    [] -> (false, (false, P "Hi"), [])
   | (true, Not p)::rest -> (true, (true, Not p), [(false, p)])
   | (false, Not p)::rest -> (true, (false, Not p), [(true, p)])
   | (true, And (p, q))::rest -> (true, (true, And(p, q)), [(true, p); (true, q)])
@@ -71,7 +79,7 @@ let rec applyalpha (proplist : (bool * prop) list) : bool * (bool * prop) * ((bo
 
 let rec applybeta (proplist : (bool * prop) list) : bool * (bool * prop) * (bool * prop) *  (bool * prop) =
   match proplist with
-  | [] -> (false, (false, P "Hi"), (false, P "Hi"), (false, P "Hi"))
+    [] -> (false, (false, P "Hi"), (false, P "Hi"), (false, P "Hi"))
   | (false, And(p, q))::rest -> (true, (false, And(p, q)), (false, p), (false, q))
   | (true, Or(p, q))::rest -> (true, (true, Or(p, q)), (true, p), (true, q))
   | (true, Implies(p, q))::rest -> (true, (true, Implies(p, q)), (false, p), (true, q))
@@ -82,7 +90,7 @@ let rec remove (p : bool * prop) (proplist : (bool * prop) list) : (bool * prop)
 
 let rec alphaextend (t1 : tableau) (t2 : tableau) (alphas : (bool * prop) list) : tableau * tableau =
   match t1, t2 with
-  | Empty, Empty -> Node(alphas, alphas, Empty, Empty, Open), Empty
+    Empty, Empty -> Node(alphas, alphas, Empty, Empty, Open), Empty
   | Node(props1, propslist1, t11, t12, Open), Empty -> let t11', t12' = alphaextend t11 t12 alphas in
       Node(props1, propslist1, t11', t12', Open), Empty
   | Node(props1, propslist1, t11, t12, Open), Node(props2, propslist2, t21, t22, Open) ->
@@ -92,7 +100,7 @@ let rec alphaextend (t1 : tableau) (t2 : tableau) (alphas : (bool * prop) list) 
 
 let rec betaextend (t1 : tableau) (t2 : tableau) (beta1 : (bool * prop)) (beta2 : (bool * prop)) : tableau * tableau =
   match t1, t2 with
-  | Empty, Empty -> (Node([beta1], [beta1], Empty, Empty, Open), Node([beta2], [beta2], Empty, Empty, Open))
+    Empty, Empty -> (Node([beta1], [beta1], Empty, Empty, Open), Node([beta2], [beta2], Empty, Empty, Open))
   | Node(props1, propslist1, t11, t12, Open), Empty -> let t11', t12' = betaextend t11 t12 beta1 beta2 in
       Node(props1, propslist1, t11', t12', Open), Empty
   | Node(props1, propslist1, t11, t12, Open), Node(props2, propslist2, t21, t22, Open) ->
@@ -102,7 +110,7 @@ let rec betaextend (t1 : tableau) (t2 : tableau) (beta1 : (bool * prop)) (beta2 
 
 let rec applyrules (t : tableau) : tableau =
   match t with
-  | Empty -> Empty
+    Empty -> Empty
   | Node(_, _, _, _, Closed) -> raise IncorrectCase
   | Node(props, proplist, t1, t2, Open) -> (match proplist with
     | [] -> Node(props, proplist, applyrules t1, applyrules t2, Open)
@@ -116,12 +124,12 @@ let rec applyrules (t : tableau) : tableau =
 
 let passon (proplistnew : (bool * prop) list) (t : tableau) =
   match t with
-  | Empty -> raise IncorrectCase
+    Empty -> raise IncorrectCase
   | Node(props, proplist, t1, t2, Open) -> Node(props, proplist @ proplistnew, t1, t2, Open)
 
 let rec solve' (t : tableau) : tableau =
   match t with
-  | Empty -> Empty
+    Empty -> Empty
   | Node(props, proplist, t1, t2, Open) when (proplist = []) -> Node(props, proplist, solve' t1, solve' t2, Open)
   | Node(props, proplist, Empty, Empty, Open) when isatomic(proplist) && closable(proplist) -> 
       Node(props, proplist, Empty, Empty, Closed)
@@ -138,19 +146,19 @@ let rec solve' (t : tableau) : tableau =
 
 let solve (s : sequent) : tableau =
   match s with
-  | ([], []) -> raise IncorrectCase
+    ([], []) -> raise SequentError
   | ([], d) -> let delta = disj d in solve' (Node(delta, delta, Empty, Empty, Open))
   | (g, []) -> let gamma = negdisj g in solve' (Node(gamma, gamma, Empty, Empty, Open))
   | (g, d) -> let dg = conj g @ disj d in solve' (Node(dg, dg, Empty, Empty, Open))
 
 let stringifybool (b : bool) : string =
   match b with
-  | false -> "F\\ "
+    false -> "F\\ "
   | true -> "T\\ "
 
 let rec stringifyprop' (prop : prop) : string =
   match prop with
-  | P c -> c
+    P c -> c
   | Top -> "\\top"
   | Bottom -> "\\bot"
   | Not p -> "\\lnot (" ^ stringifyprop'(p) ^")"
@@ -163,22 +171,22 @@ let stringifyprop ((b, prop) : bool * prop) : string =
 
 let rec stringifyproplist (propslist : (bool * prop) list) : string =
   match propslist with
-  | [] -> ""
+    [] -> ""
   | p::rest -> stringifyprop p ^ "," ^ stringifyproplist rest
 
 let rec stringifygd' (propslist : prop list) : string =
   match propslist with
-  | [] -> ""
+    [] -> ""
   | p::rest -> stringifyprop' p ^ "," ^ stringifygd' rest
 
 let stringifygd (propslist : prop list) : string =
   match propslist with
-  | [] -> ""
+    [] -> ""
   | _ -> let r = stringifygd' propslist in String.sub r 0 (String.length(r)-1)
 
 let rec stringifytableau' (t : tableau) : string =
   match t with
-  | Empty -> ""
+    Empty -> ""
   | Node(propslist, _, Empty, Empty, Closed) -> let r = stringifyproplist propslist in
       "$" ^ String.sub r 0 (String.length(r)-1) ^ "\\ \\odot$"
   | Node(propslist, _, Empty, Empty, Open) -> let r = stringifyproplist propslist in
@@ -239,5 +247,4 @@ let opentest = ([], [And(P "P", P "P")])
 let test99 = ([], [Implies(And(Or(P "C", P "A"), Or(P "C", P "B")), Or(P "C", And(P "A", P "B")))])
 let testrhsempty = ([P "A"; Not(P "A")], [])
 
-let s = latexify test99
 end

@@ -2,52 +2,8 @@
 *   Theodore (Ted) Kim
 *)
 
-type term =
-    TVar of string
-  | TFunction of string * int * term list
-
-type formula =
-    FTruth
-  | FFalsity
-  | FConj of formula * formula
-  | FDisj of formula * formula
-  | FImp of formula * formula
-  | FNeg of formula
-  | FForall of string * formula
-  | FExists of string * formula
-  | FRel of string * int * term list
-
-exception SOMETHINGWENTWRONG
-
-let pSym (s : string) : formula = FRel (s, 0, [])
-
-let rec intersperse (sep : 'a) (xs : 'a list) : 'a list =
-  match xs with
-    []        -> []
-  | (x :: []) -> x :: []
-  | (x :: xs) -> x :: sep :: intersperse sep xs
-
-let rec showTerm (t : term) : string =
-  match t with
-    TVar s -> s
-  | TFunction(f, _, xs) ->
-      f ^ "(" ^ (String.concat "" (intersperse "," (List.map showTerm xs))) ^ ")"
-
-let rec show (x : formula) : string =
-  match x with
-    FTruth -> "⊤"
-  | FFalsity -> "⊥"
-  | FConj(y, z) -> "(" ^ show y ^ " ∧ " ^ show z ^ ")"
-  | FDisj(y, z) -> "(" ^ show y ^ " ∨ " ^ show z ^ ")"
-  | FImp(y, z) -> "(" ^ show y ^ " → " ^ show z ^ ")"
-  | FNeg y -> "(" ^ "¬" ^ show y ^ ")"
-  | FForall(var, y) -> "∀" ^ var ^ ". " ^ "(" ^ show y ^ ")"
-  | FExists(var, y) -> "∃" ^ var ^ ". " ^ "(" ^ show y ^ ")"
-  | FRel(name, 0, []) -> name
-  | FRel(name, _, xs) ->
-      name ^ "(" ^ (String.concat "" (intersperse "," (List.map showTerm xs))) ^ ")"
-
-let printFormula (x : formula) : unit = (print_string (show x); print_string "\n")
+module CNF = struct
+open FOL
 
 let applyToSubformula (f : formula -> formula) (x : formula) : formula =
   match x with
@@ -198,3 +154,5 @@ let e5 = FDisj(FConj(pSym "A", pSym "B"), FDisj(FConj(pSym "C", pSym "D"), pSym 
 let e6 = FDisj(FDisj(pSym "E", FConj(pSym "C", pSym "D")), FConj(pSym "A", pSym "B"))
 let e7 = FDisj (FDisj (FConj (pSym "A", pSym "B"), FConj (pSym "C", pSym "D")), pSym "E")
 let e8 = FNeg (FImp (FConj (FImp (pSym "A", pSym "B") , pSym "A") , pSym "B"))
+
+end
