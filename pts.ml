@@ -29,6 +29,12 @@ let rec disj (d : prop list) : (bool * prop) list =
   | d::ds -> (false, d)::(disj ds)
   | [] -> raise IncorrectCase
 
+let rec negdisj (d : prop list) : (bool * prop) list =
+  match d with
+  | [d] -> [(false, Not(d))]
+  | d::ds -> (false, Not(d))::(negdisj ds)
+  | [] -> raise IncorrectCase
+
 let rec conj (g : prop list) : (bool * prop) list =
   match g with
   | [g] -> [(true, g)]
@@ -134,7 +140,7 @@ let solve (s : sequent) : tableau =
   match s with
   | ([], []) -> raise IncorrectCase
   | ([], d) -> let delta = disj d in solve' (Node(delta, delta, Empty, Empty, Open))
-  (* | (g, []) -> raise IncorrectCase *)
+  | (g, []) -> let gamma = negdisj g in solve' (Node(gamma, gamma, Empty, Empty, Open))
   | (g, d) -> let dg = conj g @ disj d in solve' (Node(dg, dg, Empty, Empty, Open))
 
 let stringifybool (b : bool) : string =
@@ -231,6 +237,7 @@ let test26 = ([], [Or(P "P", Not (P "P"))])
 let test27 = ([], [Not(And(P "P", Not(P "P")))])
 let opentest = ([], [And(P "P", P "P")])
 let test99 = ([], [Implies(And(Or(P "C", P "A"), Or(P "C", P "B")), Or(P "C", And(P "A", P "B")))])
+let testrhsempty = ([P "A"; Not(P "A")], [])
 
 let s = latexify test99
 end
