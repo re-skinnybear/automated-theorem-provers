@@ -346,6 +346,12 @@ let rec disj (d : formula list) : formula =
   | d::ds -> FDisj(d, disj ds)
   | [] -> raise SOMETHINGWENTWRONG
 
+let rec negdisj (d : formula list) : formula =
+  match d with
+    [d] -> FNeg(d)
+  | d::ds -> FDisj(FNeg(d), negdisj ds)
+  | [] -> raise SOMETHINGWENTWRONG
+
 let rec conj (g : formula list) : formula =
   match g with
     [g] -> g
@@ -520,7 +526,7 @@ let resolution (x : formula list) (y : formula list) : bool =
   match x, y with
     [], y -> resolution' (clausify(skolemize(FNeg(disj y))))
   | [], [] -> raise SOMETHINGWENTWRONG
-  (* | x, [] ->  *)
+  | x, [] -> resolution' (clausify(skolemize(FNeg(negdisj x))))
   | x, y -> resolution' (clausify(skolemize(conj x)) @ clausify(skolemize(FNeg(disj y))))
 
 
@@ -564,3 +570,5 @@ let e10 = resolution []
 
 let fail = resolution []
            [FImp(FExists( "x", FRel ("P", 1, [TVar "x"])), FForall("x", FRel ("P", 1, [TVar "x"])))]
+
+let rhsempty = resolution [FNeg(pSym "A"); pSym "A"] []
