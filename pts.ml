@@ -132,8 +132,9 @@ let rec solve' (t : tableau) : tableau =
 
 let solve (s : sequent) : tableau =
   match s with
+  | ([], []) -> raise IncorrectCase
   | ([], d) -> let delta = disj d in solve' (Node(delta, delta, Empty, Empty, Open))
-  | (g, []) -> raise IncorrectCase
+  (* | (g, []) -> raise IncorrectCase *)
   | (g, d) -> let dg = conj g @ disj d in solve' (Node(dg, dg, Empty, Empty, Open))
 
 let stringifybool (b : bool) : string =

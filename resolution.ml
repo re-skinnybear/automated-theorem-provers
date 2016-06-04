@@ -520,8 +520,11 @@ let resolution (x : formula list) (y : formula list) : bool =
   match x, y with
     [], y -> resolution' (clausify(skolemize(FNeg(disj y))))
   | [], [] -> raise SOMETHINGWENTWRONG
+  (* | x, [] ->  *)
   | x, y -> resolution' (clausify(skolemize(conj x)) @ clausify(skolemize(FNeg(disj y))))
 
+
+(* test cases *)
 let e1 = FImp ((FForall ("x", (FRel ("R", 1, [TVar "x"])))),
                (FExists ("x", (FRel ("R", 1, [TVar "x"])))))
 
