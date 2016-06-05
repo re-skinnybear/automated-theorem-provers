@@ -1,6 +1,8 @@
 (*  COMP 560-2 Propositional Theorem Solver
 *   Theodore (Ted) Kim
 * 
+*   Automatic theorem solver for propositional logic using tableau method
+*
 *   Solver purposefully does not prematurely close tableau
 *)
 
@@ -19,36 +21,40 @@ type status =
     Open 
   | Closed
 
-(* type for sequents : gamma |- delta *)
+(* Type for sequents : gamma |- delta *)
 type sequent = prop list * prop list
 
-(* type for tableau: list to be printed, list used for branching, subtableau, subtableau, status*)
+(* Type for tableau: list to be printed, list used for branching, subtableau, subtableau, status *)
 type tableau = 
     Empty 
   | Node of (bool * prop) list * (bool * prop) list * tableau * tableau * status
 
-(* exceptions *)
+(* Exceptions *)
 exception IncorrectCase
 exception SequentError
 
+(* Initalize rhs of sequent *)
 let rec disj (d : prop list) : (bool * prop) list =
   match d with
     [d] -> [(false, d)]
   | d::ds -> (false, d)::(disj ds)
   | [] -> raise IncorrectCase
 
+(* Initalize lhs of sequent when rhs is empty *)
 let rec negdisj (d : prop list) : (bool * prop) list =
   match d with
     [d] -> [(false, Not(d))]
   | d::ds -> (false, Not(d))::(negdisj ds)
   | [] -> raise IncorrectCase
 
+(* Initialize lhs of sequent *)
 let rec conj (g : prop list) : (bool * prop) list =
   match g with
     [g] -> [(true, g)]
   | g::gs -> (true, g)::(conj gs)
   | [] -> raise IncorrectCase
 
+(* Tests conditions for closing a branch *)
 let rec isatomic (proplist : (bool * prop) list) : bool =
   match proplist with
     [] -> true
@@ -67,6 +73,7 @@ let rec closable (proplist : (bool * prop) list) : bool =
                       false rest) || closable(rest)
   | _ -> raise IncorrectCase
 
+(* Apply tableau rules *)
 let rec applyalpha (proplist : (bool * prop) list) : bool * (bool * prop) * ((bool * prop) list) =
   match proplist with
     [] -> (false, (false, P "Hi"), [])
@@ -85,9 +92,11 @@ let rec applybeta (proplist : (bool * prop) list) : bool * (bool * prop) * (bool
   | (true, Implies(p, q))::rest -> (true, (true, Implies(p, q)), (false, p), (true, q))
   | _::rest -> applybeta(rest)
 
+(* Destructive tableau rules remove prop after applying a rule *)
 let rec remove (p : bool * prop) (proplist : (bool * prop) list) : (bool * prop) list =
   List.filter (fun x -> p <> x) proplist
 
+(* Extend tableau according to rule used*)
 let rec alphaextend (t1 : tableau) (t2 : tableau) (alphas : (bool * prop) list) : tableau * tableau =
   match t1, t2 with
     Empty, Empty -> Node(alphas, alphas, Empty, Empty, Open), Empty
@@ -108,6 +117,7 @@ let rec betaextend (t1 : tableau) (t2 : tableau) (beta1 : (bool * prop)) (beta2 
       let t21', t22' = betaextend t21 t22 beta1 beta2 in
       Node(props1, propslist1, t11', t12', Open), Node(props2, propslist2, t21', t22', Open)
 
+(* Apply alpha rules, then beta rules, extending tableau as needed *)
 let rec applyrules (t : tableau) : tableau =
   match t with
     Empty -> Empty
@@ -122,11 +132,13 @@ let rec applyrules (t : tableau) : tableau =
                 Node(props, remove p proplist, t1', t2', Open)
             | (false, _, _, _) -> t)))
 
+(* Pass on prop list after applying rule to subtableaus *)
 let passon (proplistnew : (bool * prop) list) (t : tableau) =
   match t with
     Empty -> raise IncorrectCase
   | Node(props, proplist, t1, t2, Open) -> Node(props, proplist @ proplistnew, t1, t2, Open)
 
+(* Branches on whether tableau is solved or not *)
 let rec solve' (t : tableau) : tableau =
   match t with
     Empty -> Empty
@@ -144,6 +156,7 @@ let rec solve' (t : tableau) : tableau =
         solve' (Node(props, [], t1', t2', Open))
   | t -> solve' (applyrules t)
 
+(* Takes a sequent and returns the solved tableau *)
 let solve (s : sequent) : tableau =
   match s with
     ([], []) -> raise SequentError
@@ -151,6 +164,7 @@ let solve (s : sequent) : tableau =
   | (g, []) -> let gamma = negdisj g in solve' (Node(gamma, gamma, Empty, Empty, Open))
   | (g, d) -> let dg = conj g @ disj d in solve' (Node(dg, dg, Empty, Empty, Open))
 
+(* Pretty printing *)
 let stringifybool (b : bool) : string =
   match b with
     false -> "F\\ "
@@ -199,9 +213,10 @@ let rec stringifytableau' (t : tableau) : string =
 let stringifytableau (t : tableau) (sequent : string) : string =
   "\\synttree[" ^ sequent ^ "[" ^ stringifytableau' t ^ "]]"
 
-let latexify (g, d) =
-  let tableau = solve(g, d) in
-  let sequent = "$F\\ " ^ stringifygd g ^ "\\vdash " ^ stringifygd d ^ "$" in 
+(* Creates tex file with solved tableau *)
+let latexify (gamma, delta) =
+  let tableau = solve(gamma, delta) in
+  let sequent = "$F\\ " ^ stringifygd gamma ^ "\\vdash " ^ stringifygd delta ^ "$" in 
   let header = "\\documentclass[letterpaper,12pt,oneside]{book}\n" ^
     "\\usepackage[DIV=14,BCOR=2mm,headinclude=true,footinclude=false]{typearea}\n" ^
     "\\usepackage{geometry, synttree, amsthm, amsmath, amssymb}\n"^
