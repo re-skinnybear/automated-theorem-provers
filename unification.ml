@@ -13,6 +13,7 @@ let rec occurs_free (x : string) (t2 : term) : bool =
         List.fold_left (fun b z -> occurs_free x z ||b) false xs
   | _ -> raise SOMETHINGWENTWRONG
 
+(* Assumes lists are of equal length *)
 let rec zip lst1 lst2 = 
   match lst1,lst2 with
     [], [] -> []
@@ -25,11 +26,13 @@ let rec subst (s : substitution) (t : term) : term =
   | TFunction (f, fa, ftms) ->
       TFunction (f, fa, List.map (fun x -> subst s x) ftms)
 
-let subst2 (s : substitution) (y, z : constr) : constr =
+(* Substitution applied to a constraint *)
+let substConstraint (s : substitution) (y, z : constr) : constr =
   subst s y, subst s z
 
+(* Substitution applied to constraints *)
 let apply_subst (s : substitution) (xs : constraints) : constraints =
-  List.map (fun x -> subst2 s x) xs
+  List.map (fun x -> substConstraint s x) xs
 
 let rec remove_dupes lst = 
   match lst with 
@@ -42,25 +45,25 @@ let compose_subst (g : substitution) (f : substitution) : substitution =
   in remove_dupes fg
 
 let applyRules (y, z : constr) (xs : constraints) (s : substitution) : constraints * substitution =
-  (* erasing *)
+  (* Erasing *)
   if y = z
   then xs, s
   else
   match y, z with
     TFunction(f, fa, ftms), TFunction(g, ga, gtms) ->
       if f <> g || fa <> ga
-      (* conflict *)
+      (* Conflict *)
       then raise CONFLICT
-      (* decomposition *)
+      (* Decomposition *)
       else zip ftms gtms @ xs, s
   | TVar x, z ->
       if occurs_free x z
-      (* occurrence *)
+      (* Occurrence *)
       then raise OCCURRENCE
-      (* elimination *)
+      (* Elimination *)
       else let s' = (x, z)
       in apply_subst [s'] xs, compose_subst s [s']
-      (* inversion *)
+      (* Inversion *)
   | y, TVar x -> (TVar x, y)::xs, s
 
 let rec applyUnification (x : constraints) (s : substitution) : substitution =
@@ -69,6 +72,7 @@ let rec applyUnification (x : constraints) (s : substitution) : substitution =
   | (x::xs) -> let (xs', s') = applyRules x xs s
                in applyUnification xs' s'
 
+(* Pretty printing for substitutions *)
 let rec print_subst (s : substitution) : string =
   match s with
   | [] -> ""
@@ -80,6 +84,7 @@ let printSubstitution (x : substitution) : unit = (print_string ("{"^(print_subs
 let unify (x : constraints) : substitution =
   applyUnification x []
 
+(* Tests *)
 let e1 = [(TVar "X", TFunction("f", 1, [TVar "Y"]))]
 let e2 = [
 (TFunction("f", 2, [TVar "X"; TFunction("c", 0, [])]),

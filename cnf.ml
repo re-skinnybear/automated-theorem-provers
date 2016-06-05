@@ -120,6 +120,7 @@ let rec conjunctify1 (x1 : formula) (x2 : formula) : formula =
         FConj(y, z) -> FConj(conjunctify1 y x2, conjunctify1 z x2)
       | _ -> raise SOMETHINGWENTWRONG)
 
+(* Rules for CNF conversion for negation *)
 let rec negCNF (x : formula) : formula =
   match x with
     FRel(_, _, _) -> FNeg(x)
@@ -143,6 +144,7 @@ applyCNF (x : formula) : formula =
 
 let toCNF = compose applyCNF toPrenex
 
+(* Tests *)
 let e1 = FImp ((FForall ("x", (FRel ("R", 1, [TVar "x"])))),
                (FExists ("x", (FRel ("R", 1, [TVar "x"])))))
 

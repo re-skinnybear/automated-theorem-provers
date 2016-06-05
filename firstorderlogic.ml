@@ -19,6 +19,7 @@ type formula =
   | FExists of string * formula
   | FRel of string * int * term list
 
+(* A constraint of form t1 = t2 represented by a pair *)
 type constr = term * term
 type constraints = constr list
 
@@ -27,8 +28,10 @@ type substitution = (string * term) list
 (* Predicate symbol *)
 let pSym (s : string) : formula = FRel (s, 0, [])
 
-(* Error for cases that should never happen *)
+(* Exception for cases that should never happen *)
 exception SOMETHINGWENTWRONG
+
+(* Exception for unification failure *)
 exception CONFLICT
 exception OCCURRENCE
 

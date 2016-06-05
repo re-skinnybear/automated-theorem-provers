@@ -53,6 +53,7 @@ let rec clausify (x : formula) : (formula list) list =
   | FConj(y, z) -> clausify y @ clausify z
   | _ -> raise SOMETHINGWENTWRONG
 
+(* Pretty printing for clauses *)
 let rec print_clause (xs : formula list) : string =
   (String.concat "" (intersperse "," (List.map show xs)))
 
@@ -63,6 +64,11 @@ let rec print_clauses (xs : (formula list) list) : string =
   | y::ys -> "{" ^ print_clause(y) ^ "}, " ^ (print_clauses ys)
 
 let printClauses (x : (formula list) list) : unit = (print_string ("{"^(print_clauses x)^"}"); print_string "\n")
+
+let print_bool (x : bool) : string =
+  match x with
+    true -> "true"
+  | false -> "false"
 
 let rec disj (d : formula list) : formula =
   match d with
@@ -82,6 +88,7 @@ let rec conj (g : formula list) : formula =
   | g::gs -> FConj(g, conj gs)
   | [] -> raise SOMETHINGWENTWRONG
 
+(* Comparison test for formulas, drops predefined length of formula *)
 let same_formula (f : formula) (g : formula) : bool =
   match f, g with
     FRel(name1, a1, xs1), FRel(name2, a2, xs2) -> name1 = name2 && xs1 = xs2
@@ -107,6 +114,7 @@ let rec union' (n : formula list) (o : formula list) : formula list =
     [] -> List.rev o
   | fl::fls -> union' fls (fl::List.filter (fun f -> not(same_formula f fl)) o)
 
+(* Membershit test for formulas *)
 let rec mem (x : formula list) (y : formula list) : bool =
   match x with
     [] -> true
@@ -117,6 +125,7 @@ let rec fmem (x : formula list) (fs : (formula list) list) : bool =
     [] -> false
   | g::gs -> (mem x g && List.length x = List.length g) || fmem x gs
 
+(* Checks for formula membership of its negation and their terms *)
 let rec negmem (f : formula) (n : formula list) : bool * term list * term list =
   match n with
     [] -> false, [], []
@@ -130,6 +139,7 @@ let rec negmem (f : formula) (n : formula list) : bool * term list * term list =
                                        | _ -> negmem f ns)
   | _ -> raise SOMETHINGWENTWRONG
 
+(* Checks for negated formula membership and returns the formula and its negation *)
 let rec negmem' (f : formula) (n : formula list) : formula * formula =
   match n with
     [] -> raise SOMETHINGWENTWRONG
@@ -145,6 +155,7 @@ let rec negmem' (f : formula) (n : formula list) : formula * formula =
                                        | _ -> negmem' f ns)
   | _ -> raise SOMETHINGWENTWRONG
 
+(* Substitution for formulas *)
 let rec substf (s : substitution) (f : formula) : formula =
   match f with
     FRel(name, a, xs) -> FRel(name, a, List.map (fun x -> subst s x)  xs)
@@ -159,6 +170,7 @@ let rec substf (s : substitution) (f : formula) : formula =
 let apply_substf (s : substitution) (xs : formula list) : formula list =
   List.map (fun x -> substf s x) xs
 
+(* Resolves formula with list of formulas, applying substitution as necessary *)
 let rec resolve (f : formula) (fl : formula list) (g : formula list) (theta : substitution) : formula list = 
   let f1, f2 = negmem' f g in
 (*   let () = print_string "f1: "; printFormula f1 in
@@ -172,6 +184,7 @@ let rec resolve (f : formula) (fl : formula list) (g : formula list) (theta : su
   let () = print_string "f1' U f2' : "; print_string (print_clause (union' f1' f2')); print_string "\n" in *)
   union' f1' f2'
 
+(* Fresh variables to avoid capture and properly resolve *)
 let rec collectVars (t : term list) (sl : string list) : string list =
   match t with
     [] -> sl
@@ -189,6 +202,7 @@ let makeFreshVars (t : term list) : substitution =
   let vars = collectVars t [] in
   makeFreshVars' vars
 
+(* Checks if anything can be resolved *)
 let rec resolvable (fl : formula list) (g : formula list) : bool * substitution * formula =
   match fl with
     [] -> false, [], FRel("what", 0, [])
@@ -207,11 +221,7 @@ let rec resolvable (fl : formula list) (g : formula list) : bool * substitution 
               | _ -> false, [], FRel("what", 0, [])
              else resolvable fs g
 
-let print_bool (x : bool) : string =
-  match x with
-    true -> "true"
-  | false -> "false"
-
+(* Resolves formula list against all clauses *)
 let rec resolution3 (fl : formula list) (fls : (formula list) list) (no : (formula list) list) (o : (formula list) list) : bool * (formula list) list * (formula list) list  =
   match no with
     [] -> false, fls, o
@@ -233,6 +243,7 @@ let rec resolution3 (fl : formula list) (fls : (formula list) list) (no : (formu
                   else resolution3 fl fls gs (fl::o)
              else resolution3 fl fls gs o
 
+(* Resolution either succeeds and returns true or run out of formulas in new clauses and returns false *)
 let rec resolution'' (b : bool) (n : (formula list) list) (o : (formula list) list) : bool =
   if b then true else
   match n, o with
@@ -243,9 +254,11 @@ let rec resolution'' (b : bool) (n : (formula list) list) (o : (formula list) li
       let b, n', o' = resolution3 fl fls (union n o) o in
       resolution'' b n' o'
 
+(* Start off not finished *)
 let resolution' (xs : (formula list) list) : bool =
   resolution'' false xs [] 
 
+(* Main function that skolemizes, turns formula into clauses, then applies resolution rules *)
 let resolution (x : formula list) (y : formula list) : bool =
   match x, y with
     [], y -> resolution' (clausify(skolemize(FNeg(disj y))))
@@ -254,7 +267,7 @@ let resolution (x : formula list) (y : formula list) : bool =
   | x, y -> resolution' (clausify(skolemize(conj x)) @ clausify(skolemize(FNeg(disj y))))
 
 
-(* test cases *)
+(* Tests *)
 let e1 = FImp ((FForall ("x", (FRel ("R", 1, [TVar "x"])))),
                (FExists ("x", (FRel ("R", 1, [TVar "x"])))))
 
